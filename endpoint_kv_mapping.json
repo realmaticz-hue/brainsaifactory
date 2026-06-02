@@ -1,0 +1,149 @@
+{
+    "generatedAt": "2026-06-01T00:00:00Z",
+    "notes": "Maps server endpoints (Edge Functions) to KV key patterns stored in kv_store_7d87310d",
+    "routes": [
+        {
+            "endpoint": "/make-server-7d87310d/social-credentials",
+            "method": "GET",
+            "keys": [
+                "social_credentials"
+            ],
+            "action": "read"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-credentials",
+            "method": "POST",
+            "keys": [
+                "social_credentials"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/save-credentials",
+            "method": "POST",
+            "keys": [
+                "oauth_creds_<platform>"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/initiate",
+            "method": "POST",
+            "keys": [
+                "oauth_state_<state>",
+                "oauth_state_<demoState>"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/start",
+            "method": "GET",
+            "keys": [
+                "oauth_state_<state>",
+                "oauth_state_<demoState>"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/relay-store",
+            "method": "POST",
+            "keys": [
+                "oauth_relay_<cleanedState>",
+                "oauth_relay_<rawState>"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/relay-poll",
+            "method": "GET",
+            "keys": [
+                "oauth_relay_<state>",
+                "oauth_relay_<cleaned>"
+            ],
+            "action": "read (may delete stale)"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/relay-consume",
+            "method": "POST",
+            "keys": [
+                "oauth_relay_<state>",
+                "oauth_relay_<cleaned>"
+            ],
+            "action": "delete (consume)"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/oauth/server-callback",
+            "method": "GET",
+            "keys": [
+                "oauth_relay_<state>",
+                "oauth_relay_<rawState>"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/facebook-oauth-callback",
+            "method": "GET",
+            "keys": [
+                "social-credentials-facebook"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts/add-manual-token",
+            "method": "POST",
+            "keys": [
+                "social_accounts",
+                "social_audit_logs"
+            ],
+            "action": "write"
+        },
+        {
+            "endpoint": "/make-server-7d87310d/social-accounts",
+            "method": "GET",
+            "keys": [
+                "social_accounts",
+                "social_audit_logs"
+            ],
+            "action": "read"
+        },
+        {
+            "endpoint": "genius-chat/*",
+            "method": "*",
+            "keys": [
+                "genius-memory-<sessionId>",
+                "genius-profile-<sessionId>",
+                "genius-corrections"
+            ],
+            "action": "read/write"
+        },
+        {
+            "endpoint": "factory/*",
+            "method": "*",
+            "keys": [
+                "factory-project:<projectId>",
+                "factory-build:<buildId>",
+                "factory-agent-metric:<id>",
+                "favorites",
+                "template:<id>"
+            ],
+            "action": "read/write"
+        },
+        {
+            "endpoint": "knowledge-graph/*",
+            "method": "*",
+            "keys": [
+                "kg:<node-key>",
+                "KG_STATS"
+            ],
+            "action": "read/write"
+        },
+        {
+            "endpoint": "scrape (cache)",
+            "method": "POST",
+            "keys": [
+                "scrape_cache:<key>"
+            ],
+            "action": "write"
+        }
+    ]
+}

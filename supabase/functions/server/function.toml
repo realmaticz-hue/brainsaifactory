@@ -1,0 +1,3 @@
+# Local dev: disable JWT verification so health endpoint is reachable without remote JWT
+verifyJWT = false
+verify_jwt = false

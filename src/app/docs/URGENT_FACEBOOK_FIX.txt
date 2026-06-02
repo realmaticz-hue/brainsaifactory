@@ -1,0 +1,131 @@
+==============================================================================
+🚨 FACEBOOK OAUTH ERROR - YOUR IMMEDIATE ACTION REQUIRED 🚨
+==============================================================================
+
+YOUR ERROR:
+-----------
+"This is an invalid redirect URI for this application"
+
+WHAT THIS MEANS:
+----------------
+You configured your Facebook App ID and App Secret (which is good!),
+BUT you forgot Step 2: Adding the redirect URI to Facebook's whitelist.
+
+YOUR EXACT REDIRECT URI (COPY THIS):
+------------------------------------
+https://72b42755-3744-48aa-83b1-a615bc674b52-v2-figmaiframepreview.figma.site/oauth-callback
+
+==============================================================================
+STEP-BY-STEP FIX (Takes 2 minutes):
+==============================================================================
+
+1. OPEN FACEBOOK DEVELOPERS
+   → Go to: https://developers.facebook.com/apps
+   → Log in
+   → Click your app
+
+2. NAVIGATE TO FACEBOOK LOGIN SETTINGS
+   → In the LEFT SIDEBAR, click "Facebook Login"
+   → Click "Settings" under Facebook Login
+   → You should now see "Facebook Login Settings" page
+
+3. FIND "VALID OAUTH REDIRECT URIS"
+   → Scroll down on the Settings page
+   → Look for the section labeled "Valid OAuth Redirect URIs"
+   → You'll see a text input box
+
+4. ADD YOUR REDIRECT URI
+   → Click in the text box
+   → Paste this EXACT URL:
+   
+     https://72b42755-3744-48aa-83b1-a615bc674b52-v2-figmaiframepreview.figma.site/oauth-callback
+   
+   ⚠️ MUST be EXACTLY as shown (including https:// and /oauth-callback)
+   ⚠️ NO extra spaces
+   ⚠️ Must start with https:// (not http://)
+
+5. SAVE YOUR CHANGES
+   → Scroll to the BOTTOM of the page
+   → Click the blue "Save Changes" button
+   → Wait for confirmation
+
+6. TRY AGAIN
+   → Go back to your app
+   → Click "Connect" on Facebook again
+   → It should work now! ✅
+
+==============================================================================
+VISUAL REFERENCE:
+==============================================================================
+
+What you're looking for in Facebook Login Settings:
+
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│  Valid OAuth Redirect URIs                                      │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                                                             │ │
+│  │  [PASTE YOUR REDIRECT URI HERE]                           │ │
+│  │                                                             │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  [+ Add URI]                                                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+                           ↓ Scroll down
+
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│                    [Save Changes]  ← CLICK THIS!                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+==============================================================================
+STILL NOT WORKING? CHECK THESE:
+==============================================================================
+
+□ Did you click "Save Changes" at the bottom? (Common mistake!)
+□ Is the URI exactly the same? (No spaces, correct protocol)
+□ Are you editing the correct Facebook app?
+□ Did you wait 30 seconds after saving?
+□ Try refreshing your browser after saving in Facebook
+
+==============================================================================
+WHY THIS IS REQUIRED:
+==============================================================================
+
+Facebook requires ALL redirect URIs to be whitelisted for security.
+Even though you have the App ID and Secret configured, Facebook won't
+allow OAuth to work unless the redirect URI is in the approved list.
+
+This is a security feature to prevent token theft.
+
+==============================================================================
+YOUR ACCESS TOKEN:
+==============================================================================
+
+The token you shared: EAAel785lGu0BQ1sQyqtCim3WkyrVI5...
+This is your App Access Token (from Facebook App settings).
+
+However, OAuth requires a different flow:
+1. User clicks "Connect"
+2. Facebook shows authorization dialog
+3. User approves
+4. Facebook redirects to: your-domain/oauth-callback
+5. Your app exchanges the code for an access token
+
+Step 4 FAILS because Facebook rejects the redirect URI.
+Once you add it to the whitelist, it will work!
+
+==============================================================================
+NEED MORE HELP?
+==============================================================================
+
+1. Visual Guide: Open /pages/FacebookOAuthHelp in your app
+2. Full Documentation: /docs/FACEBOOK_OAUTH_SETUP.md
+3. Security Guide: /docs/OAUTH_HTTPS_FIX_SUMMARY.md
+
+Or check our interactive diagnostic tool in the app!
+
+==============================================================================

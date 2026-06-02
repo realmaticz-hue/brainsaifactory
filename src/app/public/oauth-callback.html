@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
+<title>OAuth Callback</title>
+
+</head>
+
+<body>
+
+<div id="status" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;background:#f8f9fa">
+  <div style="text-align:center;padding:2rem;max-width:420px">
+    <div id="spinner" style="width:40px;height:40px;border:4px solid #6366f1;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
+    <h2 style="margin:0 0 0.5rem" id="title">Completing connection...</h2>
+    <p style="color:#666" id="subtitle">Sending authorization to your app...</p>
+    <div id="relay-status" style="margin-top:12px;font-size:13px;color:#888"></div>
+    <div id="manual-section" style="display:none;margin-top:20px;padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;text-align:left">
+      <p style="margin:0 0 8px;font-weight:600;color:#333;font-size:14px">Manual fallback</p>
+      <p style="margin:0 0 12px;color:#666;font-size:13px">If the app didn't detect the code automatically, copy it below and paste it in the app:</p>
+      <div style="display:flex;gap:8px">
+        <input id="code-input" type="text" readonly style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-family:monospace;font-size:12px;background:#f9fafb" />
+        <button id="copy-btn" onclick="copyCode()" style="padding:8px 16px;background:#6366f1;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap">Copy Code</button>
+      </div>
+      <p id="copy-feedback" style="margin:8px 0 0;font-size:12px;color:#22c55e;display:none">Copied!</p>
+    </div>
+    <p style="color:#999;font-size:11px;margin-top:16px;word-break:break-all" id="debug"></p>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<script>
+/* v3-2026-03-15 — cache-bust version */
+(function() {
+  "use strict";
+
+  var params = new URLSearchParams(window.location.search);
+  var code   = params.get("code");
+  var state  = params.get("state");
+  var error  = params.get("error");
+  var errorDesc = params.get("error_description");
+
+  // Clean state: strip any trailing path artifacts (e.g., /oauth/consent)
+  if (state && state.indexOf("/") !== -1) {
+    var parts = state.split("_");
+    if (parts.length >= 3 && state.indexOf("/") > state.lastIndexOf("_")) {
+      var cleanState = state.replace(/\/.*$/, "");
+      console.log("[oauth-callback.html] Cleaned state: '" + state + "' -> '" + cleanState + "'");
+      state = cleanState;
+    }
+  }
+
+  var payload = {
+    type: "oauth_success",
+    code: code,
+    state: state,
+    error: error,
+    errorDescription: errorDesc
+  };
+
+  console.log("[oauth-callback.html] v3 loaded | code:", code ? "present (" + code.substring(0, 10) + "...)" : "MISSING",
+              "| state:", state || "MISSING",
+              "| error:", error || "none",
+              "| opener:", !!window.opener,
+              "| origin:", window.location.origin);
+
+  var debugEl = document.getElementById("debug");
+  var relayStatusEl = document.getElementById("relay-status");
+  function setDebug(msg) {
+    if (debugEl) debugEl.textContent = msg;
+  }
+  function setRelayStatus(msg, color) {
+    if (relayStatusEl) {
+      relayStatusEl.textContent = msg;
+      if (color) relayStatusEl.style.color = color;
+    }
+  }
+
+  var delivered = false;
+  var relaySuccess = false;
+
+  // ── Strategy 1: postMessage to opener ──────────────────────────────────
+  if (window.opener) {
+    try {
+      window.opener.postMessage(payload, "*");
+      delivered = true;
+      console.log("[oauth-callback.html] Strategy 1: postMessage sent to opener");
+      setRelayStatus("postMessage sent to parent window", "#22c55e");
+    } catch (e) {
+      console.log("[oauth-callback.html] Strategy 1: postMessage failed:", e);
+    }
+  } else {
+    console.log("[oauth-callback.html] Strategy 1: No window.opener (iframe sandbox strips it)");
+  }
+
+  // ── Strategy 2: BroadcastChannel ───────────────────────────────────────
+  try {
+    var bc = new BroadcastChannel("oauth_result_channel");
+    bc.postMessage(payload);
+    delivered = true;
+    console.log("[oauth-callback.html] Strategy 2: BroadcastChannel sent");
+    setTimeout(function() { try { bc.close(); } catch(e) {} }, 1000);
+  } catch (e) {
+    console.log("[oauth-callback.html] Strategy 2: BroadcastChannel failed:", e);
+  }
+
+  // ── Strategy 3: localStorage ───────────────────────────────────────────
+  try {
+    localStorage.setItem("oauth_result", JSON.stringify(payload));
+    delivered = true;
+    console.log("[oauth-callback.html] Strategy 3: localStorage set");
+  } catch (e) {
+    console.log("[oauth-callback.html] Strategy 3: localStorage failed:", e);
+  }
+
+  // ── Strategy 4: Server relay with RETRY (MOST RELIABLE for iframe sandboxes) ──
+  if (code || error) {
+    var relayUrl = "https://bepcmibntfsijkqrlfzd.supabase.co/functions/v1/make-server-7d87310d/social-accounts/oauth/relay-store";
+    var anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhamh2d3N6eXdvZWp2cWV4bmxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDUwOTAsImV4cCI6MjA4MTQyMTA5MH0.NCemXFbk5yXZU8CTmntUchX89IfEPJOTAOJuOzrJzqc";
+
+    var rawState = params.get("state");
+    var relayBody = JSON.stringify({
+      code: code,
+      state: state,
+      error: error,
+      errorDescription: errorDesc
+    });
+
+    setRelayStatus("Sending to server relay...", "#f59e0b");
+
+    function sendRelayWithRetry(attempt) {
+      var maxAttempts = 5;
+      setDebug("Relay attempt " + attempt + "/" + maxAttempts + "...");
+      console.log("[oauth-callback.html] Strategy 4: Relay POST attempt " + attempt + "/" + maxAttempts);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", relayUrl, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("Authorization", "Bearer " + anonKey);
+      xhr.timeout = 10000;
+
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          relaySuccess = true;
+          console.log("[oauth-callback.html] Strategy 4: Server relay store OK (attempt " + attempt + ", status " + xhr.status + ")");
+          console.log("[oauth-callback.html] Strategy 4: Response:", xhr.responseText);
+          setRelayStatus("Server relay: SUCCESS (attempt " + attempt + ")", "#22c55e");
+          setDebug("Server notified successfully.");
+
+          // Also store under raw state if different
+          if (rawState && rawState !== state) {
+            console.log("[oauth-callback.html] Strategy 4: Also storing under raw state");
+            var xhr2 = new XMLHttpRequest();
+            xhr2.open("POST", relayUrl, true);
+            xhr2.setRequestHeader("Content-Type", "application/json");
+            xhr2.setRequestHeader("Authorization", "Bearer " + anonKey);
+            xhr2.send(JSON.stringify({
+              code: code,
+              state: rawState,
+              error: error,
+              errorDescription: errorDesc
+            }));
+          }
+
+          updateUI();
+        } else {
+          console.log("[oauth-callback.html] Strategy 4: Relay returned " + xhr.status + " (attempt " + attempt + ")");
+          console.log("[oauth-callback.html] Strategy 4: Response body:", xhr.responseText);
+          setRelayStatus("Relay attempt " + attempt + " failed (HTTP " + xhr.status + ")", "#ef4444");
+
+          if (attempt < maxAttempts) {
+            var delay = attempt * 1500;
+            console.log("[oauth-callback.html] Retrying relay in " + delay + "ms...");
+            setTimeout(function() { sendRelayWithRetry(attempt + 1); }, delay);
+          } else {
+            setRelayStatus("Server relay FAILED after " + maxAttempts + " attempts", "#ef4444");
+            setDebug("Relay failed (status " + xhr.status + "). Use manual code copy below.");
+            showManualSection();
+          }
+        }
+      };
+
+      xhr.onerror = function() {
+        console.log("[oauth-callback.html] Strategy 4: Relay network error (attempt " + attempt + ")");
+        setRelayStatus("Relay network error (attempt " + attempt + ")", "#ef4444");
+
+        if (attempt < maxAttempts) {
+          var delay = attempt * 1500;
+          setTimeout(function() { sendRelayWithRetry(attempt + 1); }, delay);
+        } else {
+          setRelayStatus("Server relay FAILED (network error)", "#ef4444");
+          showManualSection();
+        }
+      };
+
+      xhr.ontimeout = function() {
+        console.log("[oauth-callback.html] Strategy 4: Relay timeout (attempt " + attempt + ")");
+        setRelayStatus("Relay timeout (attempt " + attempt + ")", "#ef4444");
+
+        if (attempt < maxAttempts) {
+          setTimeout(function() { sendRelayWithRetry(attempt + 1); }, 1000);
+        } else {
+          setRelayStatus("Server relay TIMED OUT", "#ef4444");
+          showManualSection();
+        }
+      };
+
+      xhr.send(relayBody);
+    }
+
+    // Also try fetch as a parallel approach (some environments block XHR but allow fetch)
+    function sendRelayViaFetch() {
+      if (typeof fetch === "undefined") return;
+      console.log("[oauth-callback.html] Strategy 4b: Parallel fetch relay POST");
+      fetch(relayUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + anonKey
+        },
+        body: relayBody,
+        mode: "cors"
+      }).then(function(r) {
+        console.log("[oauth-callback.html] Strategy 4b: Fetch relay status=" + r.status);
+        if (r.ok && !relaySuccess) {
+          relaySuccess = true;
+          setRelayStatus("Server relay: SUCCESS (via fetch)", "#22c55e");
+          updateUI();
+        }
+        return r.text();
+      }).then(function(t) {
+        console.log("[oauth-callback.html] Strategy 4b: Fetch relay response:", t);
+      }).catch(function(e) {
+        console.log("[oauth-callback.html] Strategy 4b: Fetch relay error:", e);
+      });
+    }
+
+    // Fire both XHR and fetch in parallel for maximum reliability
+    sendRelayWithRetry(1);
+    sendRelayViaFetch();
+  }
+
+  // ── Strategy 5: Self-redirect fallback ─────────────────────────────────
+  if (!delivered && code) {
+    setTimeout(function() {
+      if (!relaySuccess) {
+        console.log("[oauth-callback.html] Strategy 5: No delivery channel worked - self-redirecting to parent app");
+        var redirectUrl = window.location.origin
+          + "/?oauth=success"
+          + "&code=" + encodeURIComponent(code)
+          + "&state=" + encodeURIComponent(state || "");
+        window.location.href = redirectUrl;
+      }
+    }, 8000);
+  }
+
+  // ── Manual code copy section ───────────────────────────────────────────
+  function showManualSection() {
+    var section = document.getElementById("manual-section");
+    var input = document.getElementById("code-input");
+    if (section && code) {
+      section.style.display = "block";
+      if (input) input.value = code;
+    }
+  }
+
+  // Always show the manual section after 6 seconds as a fallback
+  if (code) {
+    setTimeout(function() {
+      if (!relaySuccess) {
+        showManualSection();
+      }
+    }, 6000);
+  }
+
+  window.copyCode = function() {
+    var input = document.getElementById("code-input");
+    var feedback = document.getElementById("copy-feedback");
+    if (input) {
+      input.select();
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(input.value).then(function() {
+            if (feedback) feedback.style.display = "block";
+          });
+        } else {
+          document.execCommand("copy");
+          if (feedback) feedback.style.display = "block";
+        }
+      } catch (e) {
+        document.execCommand("copy");
+        if (feedback) feedback.style.display = "block";
+      }
+    }
+  };
+
+  // ── Auto-close popup after relay success ────────────────────────────────
+  if (code || error) {
+    var closeCheckInterval = setInterval(function() {
+      if (relaySuccess) {
+        clearInterval(closeCheckInterval);
+        console.log("[oauth-callback.html] Relay succeeded - auto-closing popup in 3s");
+        setTimeout(function() {
+          try { window.close(); } catch (e) { /* ignore */ }
+        }, 3000);
+      }
+    }, 500);
+    setTimeout(function() { clearInterval(closeCheckInterval); }, 60000);
+  }
+
+  // Update UI
+  function updateUI() {
+    if (code && !error) {
+      document.getElementById("title").textContent = "Connected!";
+      document.getElementById("subtitle").textContent = "Authorization code received. You can close this window.";
+      document.getElementById("spinner").style.borderColor = "#22c55e";
+      document.getElementById("spinner").style.borderTopColor = "transparent";
+      document.getElementById("spinner").style.animation = "none";
+    } else if (error) {
+      document.getElementById("title").textContent = "Connection failed";
+      document.getElementById("subtitle").textContent = errorDesc || error || "Unknown error";
+      document.getElementById("spinner").style.display = "none";
+    }
+  }
+  updateUI();
+
+})();
+
+</script>
+
+</body>
+</html>

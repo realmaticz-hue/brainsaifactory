@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>OAuth Callback</title>
+</head>
+
+<body>
+  <script>
+    console.log("OAuth callback started")
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("code")
+    const state = params.get("state")
+
+    if (window.opener) {
+      window.opener.postMessage({
+        type: "oauth_success",
+        code,
+        state
+      }, "*")
+      window.close()
+    } else {
+      document.body.innerHTML =
+        "<h2>OAuth Success</h2><p>You can close this window.</p>"
+    }
+  </script>
+</body>
+
+</html>
