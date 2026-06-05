@@ -78,6 +78,11 @@ function buildBlogPrompt(scrapedData: any, count7: number, count30: number): str
   const keyPoints = scrapedData.keyPoints?.slice(0, 5).join('\n- ') || '';
   const dataPoints = scrapedData.dataPoints?.slice(0, 3).join('\n- ') || '';
 
+  const generationTargets = [
+    count7 > 0 ? `${count7} short blog post${count7 !== 1 ? 's' : ''} (7-second read, ~50-100 words)` : '',
+    count30 > 0 ? `${count30} longer blog post${count30 !== 1 ? 's' : ''} (30-second read, ~200-250 words)` : '',
+  ].filter(Boolean).join(' and ');
+
   return `You are an expert blog post writer specializing in viral, engaging content.
 
 TOPIC: ${topic}
@@ -89,7 +94,7 @@ ${keyPoints ? `- ${keyPoints}` : 'N/A'}
 DATA POINTS:
 ${dataPoints ? `- ${dataPoints}` : 'N/A'}
 
-Generate ${count7} short blog posts (7-second read, ~50-100 words) and ${count30} longer blog posts (30-second read, ~200-250 words).
+Generate ${generationTargets}.
 
 Each blog post should:
 - Be engaging and viral-worthy

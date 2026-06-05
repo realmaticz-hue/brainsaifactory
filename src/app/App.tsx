@@ -4,7 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LanguageSelector } from './components/LanguageSelector';
 import { CharacterSelector } from './components/CharacterSelector';
 import { BlogPostCard } from './components/BlogPostCard';
-import { UrlInput } from './components/UrlInput';
+import { UrlInput, type BlogGenerationOptions } from './components/UrlInput';
 import { CustomAvatarCreator } from './components/CustomAvatarCreator';
 import { VideoScriptCreator } from './components/VideoScriptCreator';
 import { SocialAccountsHub } from './components/SocialAccountsHub';
@@ -364,7 +364,10 @@ function AppContent() {
     return () => window.removeEventListener('openTemplatesLibrary', handler);
   }, []);
 
-  const handleGenerate = async (inputUrls: string | string[]) => {
+  const handleGenerate = async (
+    inputUrls: string | string[],
+    options: BlogGenerationOptions = { duration: 7, count: 5 },
+  ) => {
     setIsGenerating(true);
     setError(null);
 
@@ -495,7 +498,11 @@ function AppContent() {
           console.log('[BlogGen] Calling /generate-blogs with AI prompt framework…');
           const genResponse = await serverFetch('/generate-blogs', {
             method: 'POST',
-            body: JSON.stringify({ scrapedData, count7: 20, count30: 20 }),
+            body: JSON.stringify({
+              scrapedData,
+              count7: options.duration === 7 ? options.count : 0,
+              count30: options.duration === 30 ? options.count : 0,
+            }),
           });
 
           if (genResponse.ok) {
@@ -522,9 +529,14 @@ function AppContent() {
         // ── Fallback: template-based generator with TRENDING ENHANCEMENTS ──
         if (!usedAI) {
           const blogPostsData = generateTrendingBlogPosts(scrapedData);
-          aiPosts7 = blogPostsData.posts7sec;
-          aiPosts30 = blogPostsData.posts30sec;
+          aiPosts7 = options.duration === 7 ? blogPostsData.posts7sec.slice(0, options.count) : [];
+          aiPosts30 = options.duration === 30 ? blogPostsData.posts30sec.slice(0, options.count) : [];
           console.log('[BlogGen] Using TRENDING template with viral headlines & buyer psychology');
+        }
+
+        if (usedAI) {
+          aiPosts7 = options.duration === 7 ? aiPosts7.slice(0, options.count) : [];
+          aiPosts30 = options.duration === 30 ? aiPosts30.slice(0, options.count) : [];
         }
 
         const newPosts: BlogPost[] = [];

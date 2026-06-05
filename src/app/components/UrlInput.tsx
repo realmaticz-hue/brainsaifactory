@@ -2,11 +2,16 @@ import { useState, useRef } from 'react';
 import { Link, Plus, Trash2, Sparkles, Globe, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface UrlInputProps {
-  onGenerate: (urls: string[]) => void;
+  onGenerate: (urls: string[], options: BlogGenerationOptions) => void;
   onClear: () => void;
   isGenerating: boolean;
   disabled?: boolean;
 }
+
+export type BlogGenerationOptions = {
+  duration: 7 | 30;
+  count: number;
+};
 
 const EXAMPLE_URLS = [
   { url: 'https://www.nike.com', label: 'Nike' },
@@ -36,6 +41,8 @@ export function UrlInput({ onGenerate, onClear, isGenerating, disabled }: UrlInp
   const [inputValue, setInputValue] = useState('');
   const [urls, setUrls] = useState<string[]>([]);
   const [inputError, setInputError] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState<7 | 30>(7);
+  const [blogCount, setBlogCount] = useState(5);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addUrl = (raw?: string) => {
@@ -95,7 +102,10 @@ export function UrlInput({ onGenerate, onClear, isGenerating, disabled }: UrlInp
     setUrls(allUrls);
     setInputValue('');
     setInputError('');
-    onGenerate(allUrls);
+    onGenerate(allUrls, {
+      duration: selectedDuration,
+      count: blogCount,
+    });
   };
 
   const handleClear = () => {
@@ -186,7 +196,7 @@ export function UrlInput({ onGenerate, onClear, isGenerating, disabled }: UrlInp
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {urls.map((url, index) => {
                 let domain = url;
-                try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch {}
+                try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch { }
                 return (
                   <div
                     key={url}
@@ -237,6 +247,47 @@ export function UrlInput({ onGenerate, onClear, isGenerating, disabled }: UrlInp
           </div>
         )}
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <p className="text-xs font-semibold text-gray-600 mb-2">Blog type</p>
+            <div className="flex gap-2">
+              {([7, 30] as const).map((duration) => (
+                <button
+                  key={duration}
+                  type="button"
+                  onClick={() => setSelectedDuration(duration)}
+                  disabled={isGenerating || disabled}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-40 ${selectedDuration === duration
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:border-purple-300'
+                    }`}
+                >
+                  {duration}s blogs
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <label className="text-xs font-semibold text-gray-600 mb-2 block" htmlFor="blog-count">
+              Amount of blogs
+            </label>
+            <select
+              id="blog-count"
+              value={blogCount}
+              onChange={(e) => setBlogCount(Number(e.target.value))}
+              disabled={isGenerating || disabled}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-40"
+            >
+              {[1, 2, 3, 4, 5, 10, 15, 20].map((count) => (
+                <option key={count} value={count}>
+                  {count} blog{count !== 1 ? 's' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Character gate */}
         {disabled && (
           <div className="flex items-center gap-2 text-amber-600 bg-amber-50 rounded-xl px-4 py-3 text-sm">
@@ -262,10 +313,10 @@ export function UrlInput({ onGenerate, onClear, isGenerating, disabled }: UrlInp
               <>
                 <Sparkles className="w-4 h-4" />
                 {urls.length > 1
-                  ? `Generate Combined Blog (${urls.length} sources)`
+                  ? `Generate ${blogCount} ${selectedDuration}s Blog${blogCount !== 1 ? 's' : ''} (${urls.length} sources)`
                   : urls.length === 1
-                  ? 'Generate Blog Posts'
-                  : 'Generate Blog Posts'}
+                    ? `Generate ${blogCount} ${selectedDuration}s Blog${blogCount !== 1 ? 's' : ''}`
+                    : `Generate ${blogCount} ${selectedDuration}s Blog${blogCount !== 1 ? 's' : ''}`}
                 <ArrowRight className="w-4 h-4 ml-1" />
               </>
             )}

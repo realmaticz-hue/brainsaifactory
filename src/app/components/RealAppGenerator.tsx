@@ -75,7 +75,9 @@ export class RealAppGenerator {
   }
 
   static generateAppTsx(config: RealAppConfig): string {
-    return `import { RouterProvider } from 'react-router';
+    return
+
+    `import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import './styles/globals.css';
 
@@ -106,6 +108,8 @@ export default App;
 
     return `import { createBrowserRouter } from 'react-router';
 ${imports}
+
+
 import NotFound from './pages/NotFound';
 
 export const router = createBrowserRouter([

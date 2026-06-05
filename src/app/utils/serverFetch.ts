@@ -1,12 +1,9 @@
-
 import { projectId, publicAnonKey } from './supabase/info';
+import { supabase } from './supabase/client';
 
 export const SERVER_BASE =
   `https://${projectId}.supabase.co/functions/v1/make-server-7d87310d`;
 
-/**
- * Returns a fully-qualified Edge Function URL.
- */
 export function resolveServerUrl(path = ''): string {
   if (/^https?:\/\//i.test(path)) {
     return path;
@@ -19,14 +16,6 @@ export function resolveServerUrl(path = ''): string {
   return `${SERVER_BASE}${normalized}`;
 }
 
-/**
- * Returns a callback URL for OAuth, webhooks,
- * Stripe redirects, magic links, etc.
- *
- * Examples:
- * resolveCallbackUrl('/auth/callback')
- * resolveCallbackUrl('oauth/google/callback')
- */
 export function resolveCallbackUrl(path = '/auth/callback'): string {
   const origin =
     typeof window !== 'undefined'
@@ -46,9 +35,7 @@ export async function serverFetch(
 ): Promise<Response> {
   const url = resolveServerUrl(path);
 
-  const headersObj: Record<string, string> = {
-    Authorization: `Bearer ${publicAnonKey}`,
-  };
+  const headersObj: Record<string, string> = {};
 
   const isFormData =
     typeof FormData !== 'undefined' &&
@@ -58,20 +45,47 @@ export async function serverFetch(
     headersObj['Content-Type'] = 'application/json';
   }
 
+  // Copy ALL supplied headers, including Authorization
   if (init.headers) {
     const suppliedHeaders = new Headers(init.headers);
 
     suppliedHeaders.forEach((value, key) => {
-      if (key.toLowerCase() !== 'authorization') {
-        headersObj[key] = value;
-      }
+      headersObj[key] = value;
     });
+  }
+
+  // If Authorization wasn't supplied,
+  // try to use the logged-in user's JWT
+  const hasAuth =
+    headersObj['Authorization'] ||
+    headersObj['authorization'];
+
+  if (!hasAuth) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      headersObj['Authorization'] =
+        `Bearer ${session.access_token}`;
+    } else {
+      // Final fallback for public endpoints
+      headersObj['Authorization'] =
+        `Bearer ${publicAnonKey}`;
+    }
   }
 
   const headers = new Headers(headersObj);
 
   console.log(
     `[serverFetch] → ${init.method ?? 'GET'} ${url}`
+  );
+
+  console.log(
+    '[serverFetch] Auth Type:',
+    headers.get('Authorization')?.startsWith('Bearer eyJ')
+      ? 'USER_JWT'
+      : 'ANON_KEY'
   );
 
   const response = await fetch(url, {
@@ -85,4 +99,3 @@ export async function serverFetch(
 
   return response;
 }
-
